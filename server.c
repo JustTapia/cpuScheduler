@@ -21,8 +21,8 @@ typedef struct node {
     int pid;
     int burst;
     int prioridad;
-    clock_t llegada;
-    clock_t salida;
+    time_t llegada;
+    time_t salida;
     struct node * next; 
 } node_t;
 
@@ -30,7 +30,7 @@ static node_t *head = NULL;
 static node_t *headend = NULL;
 
 int connfd;
-int *continuar;
+int continuar;
 
 void *printList(){
 
@@ -67,7 +67,7 @@ void agregarALista(int pid, int burst, int prioridad)
         head->pid = pid;
         head->burst = burst;
         head->prioridad = prioridad;
-        head->llegada = clock();
+        head->llegada = time(NULL);
         head->next = NULL;
     }else{
         node_t *temp = head;
@@ -78,7 +78,7 @@ void agregarALista(int pid, int burst, int prioridad)
         nuevo_nodo->pid = pid;
         nuevo_nodo->burst = burst;
         nuevo_nodo->prioridad = prioridad;
-        nuevo_nodo->llegada = clock();
+        nuevo_nodo->llegada = time(NULL);
         nuevo_nodo->next = NULL;
         temp->next = nuevo_nodo;
     }
@@ -131,15 +131,16 @@ void *receptorProcesos()
     }
 } 
 
-void anadirAterminado(node_t * terminado){
+void anadirAterminado(node_t *terminado){
+    terminado->next=NULL;
     if(headend==NULL){
         headend = terminado;
     }else{
         node_t *temp = headend;
-        while(temp->next!=NULL){
+        while(temp->next != NULL){
             temp = temp->next;
         }
-    temp->next = terminado;
+        temp->next = terminado;
     }
 }
 
@@ -148,12 +149,13 @@ void imprimirTerminada(){
     float totalTAT, totalWT;
     while(headend != NULL){
         cantProcesos++;
-        float tat = (float)(headend->salida - headend->llegada) / CLOCKS_PER_SEC;
+        int tat = (headend->salida - headend->llegada);
         totalTAT+=tat;
-        float wt = tat - headend->burst;
+        int wt = tat - headend->burst;
         totalWT += wt;
-        printf("PID:%d TurnAround Time: %f Waiting Time: %f",headend->pid,tat,wt);
+        printf("PID:%d TurnAround Time: %d Waiting Time: %d\n",headend->pid,tat,wt);
         fflush(stdout);
+        headend= headend->next;
     }
     printf("Promedios:\nTurnAround Time: %f\nWaiting Time: %f\n",totalTAT/cantProcesos,totalWT/cantProcesos);
     fflush(stdout);
@@ -162,35 +164,39 @@ void imprimirTerminada(){
 void *fifo(){
     float oscioso, tiempo = 0;
     int ejecucion = 0;
-    clock_t startOcioso, endOcioso;
+    time_t startOcioso, endOcioso;
     sleep(2);
-    startOcioso = clock();
-    while (*continuar) { 
+    startOcioso = time(NULL);
+    while (continuar) { 
         if(head!=NULL){
             printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", head->pid, head->burst, head->prioridad);
             fflush(stdout);
-            endOcioso = clock();
-            tiempo = (float)(endOcioso - startOcioso) / CLOCKS_PER_SEC;
+            endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
             oscioso+=tiempo;
             sleep(head->burst);
             ejecucion += head->burst;
             printf("Proceso %d Ejecutado\n",head->pid);
             fflush(stdout);
-            startOcioso = clock();
+            startOcioso = time(NULL);
             head->salida = startOcioso;
-            //anadirAterminado(head);
+            node_t *terminado = head;
             head = head->next;
+            anadirAterminado(terminado);
         }
-        if(*continuar == 0) break;
+        if(continuar == 0) break;
     }
     printf("Tiempo Ejecutando:%d  Tiempo Oscioso:%f\n",ejecucion, oscioso);
     fflush(stdout);
-    //printList2();
+    imprimirTerminada();
 }  
 
 // Driver function 
 int main() 
 { 
+    printf("Seleccione el tipo de algoritmo");
+    int algoritmo;
+    scanf("%d", &algoritmo);
     int sockfd, len; 
     struct sockaddr_in servaddr, cli; 
 
@@ -234,13 +240,9 @@ int main()
     } 
     else{
         printf("server acccept the client...\n"); 
-        printf("Seleccione el tipo de algoritmo");
-        int algoritmo;
-        scanf("%d", &algoritmo);
         pthread_t thread_id, thread2_id; 
         pthread_create(&thread_id, NULL, receptorProcesos, NULL);
-        continuar = malloc(sizeof(int));
-        *continuar = 1; 
+        continuar = 1; 
         pthread_create(&thread2_id, NULL, fifo, NULL);
         char comprobar;
         while(comprobar = getchar()!='q'){
@@ -249,7 +251,7 @@ int main()
                 pthread_create(&thread3_id, NULL, printList, NULL);
             }
         }
-        *continuar = 0; 
+        continuar = 0; 
         pthread_join(thread2_id, NULL);
     }
     // Function for chatting between client and server 
