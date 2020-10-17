@@ -31,6 +31,7 @@ static node_t *headend = NULL;
 
 int connfd;
 int continuar;
+int bloquear_cola = 0;
 
 void *printList(){
 
@@ -108,7 +109,12 @@ void *receptorProcesos()
             printf("%d\n%d\n",ptr.burst,ptr.prioridad);
             fflush(stdout);
 
+           // while(bloquear_cola){};
+            printf("Prueba");
+            fflush(stdout);
+            bloquear_cola = 1;
             agregarALista(counter_pid, ptr.burst, ptr.prioridad);
+            bloquear_cola = 0;
             counter_pid++;
         }
         // print buffer which contains the client contents 
@@ -161,11 +167,52 @@ void imprimirTerminada(){
     fflush(stdout);
 }
 
+void *sjf(){
+	float oscioso, tiempo = 0;
+    int ejecucion = 0;
+    time_t startOcioso, endOcioso;
+    startOcioso = time(NULL);
+    while (continuar) {
+    	//while(bloquear_cola){};
+    	bloquear_cola = 1;
+    	if(head != NULL){
+    		printf("Entro if");
+    		node_t *temp = head;
+    		node_t *eliminar;
+    		node_t *anterior_eliminar;
+    		int burst = head->burst;
+    		while(temp->next != NULL){
+    			printf("Entro");
+    			if(temp->next->burst < burst){
+    				burst = temp->next->burst;
+    				eliminar = temp->next;
+    				anterior_eliminar = temp;
+    			}
+    		}
+    		bloquear_cola = 0;
+    		printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
+        	fflush(stdout);
+    		sleep(eliminar->burst);
+    		printf("Proceso %d Ejecutado\n",eliminar->pid);
+        	fflush(stdout);
+        	anterior_eliminar->next = eliminar->next;
+        	anadirAterminado(eliminar);
+    	}
+    	if(continuar == 0) {
+		/*endOcioso = time(NULL);
+		tiempo = (float)(endOcioso - startOcioso);
+		oscioso+=tiempo;*/
+        break;
+    	}
+	}
+    printList2();
+
+}
+
 void *fifo(){
     float oscioso, tiempo = 0;
     int ejecucion = 0;
     time_t startOcioso, endOcioso;
-    sleep(2);
     startOcioso = time(NULL);
     while (continuar) { 
         if(head!=NULL){
@@ -198,7 +245,11 @@ void *fifo(){
 // Driver function 
 int main() 
 { 
-    printf("Seleccione el tipo de algoritmo");
+    printf("Seleccione el tipo de algoritmo:\n");
+    printf("FIFO: 1\n");
+    printf("SJF: 2\n");
+    printf("HPF: 3\n");
+    printf("Round Robin: 4\n");
     int algoritmo;
     scanf("%d", &algoritmo);
     int sockfd, len; 
@@ -247,7 +298,7 @@ int main()
         pthread_t thread_id, thread2_id; 
         pthread_create(&thread_id, NULL, receptorProcesos, NULL);
         continuar = 1; 
-        pthread_create(&thread2_id, NULL, fifo, NULL);
+        pthread_create(&thread2_id, NULL, sjf, NULL);
         char comprobar;
         while(comprobar = getchar()!='q'){
             if(comprobar == 'c'){
