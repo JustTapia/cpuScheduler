@@ -61,26 +61,26 @@ void printList2(){
 
 } 
 
-void agregarALista(int pid, int burst, int prioridad) 
-{    
+void agregarALista(int pid, int burst, int prioridad) {
     if(head == NULL){
-        head = (node_t *)malloc(sizeof(node_t)); 
+        head = (node_t *)malloc(sizeof(node_t));
+        head->next = NULL;
         head->pid = pid;
         head->burst = burst;
         head->prioridad = prioridad;
         head->llegada = time(NULL);
-        head->next = NULL;
+        
     }else{
         node_t *temp = head;
         while(temp->next != NULL){
             temp = temp->next;
         }
-        node_t *nuevo_nodo = (node_t *)malloc(sizeof(node_t)); 
+        node_t *nuevo_nodo = (node_t *)malloc(sizeof(node_t));
+        nuevo_nodo->next = NULL;
         nuevo_nodo->pid = pid;
         nuevo_nodo->burst = burst;
         nuevo_nodo->prioridad = prioridad;
         nuevo_nodo->llegada = time(NULL);
-        nuevo_nodo->next = NULL;
         temp->next = nuevo_nodo;
     }
 } 
@@ -109,9 +109,7 @@ void *receptorProcesos()
             printf("%d\n%d\n",ptr.burst,ptr.prioridad);
             fflush(stdout);
 
-           // while(bloquear_cola){};
-            printf("Prueba");
-            fflush(stdout);
+           while(bloquear_cola){};
             bloquear_cola = 1;
             agregarALista(counter_pid, ptr.burst, ptr.prioridad);
             bloquear_cola = 0;
@@ -167,47 +165,115 @@ void imprimirTerminada(){
     fflush(stdout);
 }
 
-void *sjf(){
-	float oscioso, tiempo = 0;
+void *hpf(){
+    float oscioso, tiempo = 0;
     int ejecucion = 0;
     time_t startOcioso, endOcioso;
     startOcioso = time(NULL);
-    while (continuar) {
-    	//while(bloquear_cola){};
-    	bloquear_cola = 1;
-    	if(head != NULL){
-    		printf("Entro if");
-    		node_t *temp = head;
-    		node_t *eliminar;
-    		node_t *anterior_eliminar;
-    		int burst = head->burst;
-    		while(temp->next != NULL){
-    			printf("Entro");
-    			if(temp->next->burst < burst){
-    				burst = temp->next->burst;
-    				eliminar = temp->next;
-    				anterior_eliminar = temp;
-    			}
-    		}
-    		bloquear_cola = 0;
-    		printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
-        	fflush(stdout);
-    		sleep(eliminar->burst);
-    		printf("Proceso %d Ejecutado\n",eliminar->pid);
-        	fflush(stdout);
-        	anterior_eliminar->next = eliminar->next;
-        	anadirAterminado(eliminar);
-    	}
-    	if(continuar == 0) {
-		/*endOcioso = time(NULL);
-		tiempo = (float)(endOcioso - startOcioso);
-		oscioso+=tiempo;*/
-        break;
-    	}
-	}
-    printList2();
+    while (continuar) { 
+        while(bloquear_cola){}
+        bloquear_cola = 1;
+        if(head!=NULL){
+            fflush(stdout);
+            node_t *temp = head;
+            node_t *eliminar = head;
+            node_t *anterior_eliminar = NULL;
+            int prioridad = head->prioridad;
+            while(temp->next != NULL){
+                if(temp->next->prioridad < prioridad){
+                    prioridad = temp->next->prioridad;
+                    eliminar = temp->next;
+                    anterior_eliminar = temp;
+                }
+                temp=temp->next;
+            }
+            bloquear_cola = 0;
+            printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
+            fflush(stdout);
+            endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            fflush(stdout);
+            sleep(eliminar->burst);
+            ejecucion += eliminar->burst;
+            printf("Proceso %d Ejecutado\n",eliminar->pid);
+            fflush(stdout);
+            startOcioso = time(NULL);
+            eliminar->salida = startOcioso;
+            node_t *terminado = eliminar;
+            if(anterior_eliminar!=NULL){
+                anterior_eliminar->next = eliminar->next;
+            }else{
+                head = eliminar->next;
+            }
+            anadirAterminado(terminado);
+        }
+        bloquear_cola=0;
+        if(continuar == 0) {endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            break;
+        }
+    }
+    printf("Tiempo Ejecutando:%d  Tiempo Oscioso:%f\n",ejecucion, oscioso);
+    fflush(stdout);
+    imprimirTerminada();
+}  
 
-}
+void *sjf(){
+    float oscioso, tiempo = 0;
+    int ejecucion = 0;
+    time_t startOcioso, endOcioso;
+    startOcioso = time(NULL);
+    while (continuar) { 
+        while(bloquear_cola){}
+        bloquear_cola = 1;
+        if(head!=NULL){
+            fflush(stdout);
+            node_t *temp = head;
+            node_t *eliminar = head;
+            node_t *anterior_eliminar = NULL;
+            int burst = head->burst;
+            while(temp->next != NULL){
+                if(temp->next->burst < burst){
+                    burst = temp->next->burst;
+                    eliminar = temp->next;
+                    anterior_eliminar = temp;
+                }
+                temp=temp->next;
+            }
+            bloquear_cola = 0;
+            printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
+            fflush(stdout);
+            endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            fflush(stdout);
+            sleep(eliminar->burst);
+            ejecucion += eliminar->burst;
+            printf("Proceso %d Ejecutado\n",eliminar->pid);
+            fflush(stdout);
+            startOcioso = time(NULL);
+            eliminar->salida = startOcioso;
+            node_t *terminado = eliminar;
+            if(anterior_eliminar!=NULL){
+                anterior_eliminar->next = eliminar->next;
+            }else{
+                head = eliminar->next;
+            }
+            anadirAterminado(terminado);
+        }
+        bloquear_cola=0;
+        if(continuar == 0) {endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            break;
+        }
+    }
+    printf("Tiempo Ejecutando:%d  Tiempo Oscioso:%f\n",ejecucion, oscioso);
+    fflush(stdout);
+    imprimirTerminada();
+}  
 
 void *fifo(){
     float oscioso, tiempo = 0;
@@ -298,7 +364,7 @@ int main()
         pthread_t thread_id, thread2_id; 
         pthread_create(&thread_id, NULL, receptorProcesos, NULL);
         continuar = 1; 
-        pthread_create(&thread2_id, NULL, sjf, NULL);
+        pthread_create(&thread2_id, NULL, hpf, NULL);
         char comprobar;
         while(comprobar = getchar()!='q'){
             if(comprobar == 'c'){
