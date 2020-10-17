@@ -184,7 +184,11 @@ void *fifo(){
             head = head->next;
             anadirAterminado(terminado);
         }
-        if(continuar == 0) break;
+        if(continuar == 0) {endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            break;
+        }
     }
     printf("Tiempo Ejecutando:%d  Tiempo Oscioso:%f\n",ejecucion, oscioso);
     fflush(stdout);

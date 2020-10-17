@@ -109,7 +109,20 @@ int main()
 { 
 	int connfd; 
 	struct sockaddr_in servaddr, cli; 
-
+    printf("connected to the server..\n"); 
+        printf("Desea el modo automatico(a) o Manual(m)?");
+        char c = getchar();
+        if(c == 'a'){
+            printf("Elija el tiempo mínimo para el burst: ");
+            scanf("%d", &minBurst);
+            printf("\nElija el tiempo máximo para el burst: ");
+            scanf("%d", &maxBurst);
+            printf("\nElija el tiempo mínimo para la espera: ");
+            scanf("%d", &minWait);
+            printf("\nElija el tiempo máximo para la espera: ");
+            scanf("%d", &maxWait);
+            printf("%d",maxWait);
+    }
 	// socket create and varification 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	if (sockfd == -1) { 
@@ -131,20 +144,8 @@ int main()
 		exit(0); 
 	} 
 	else{
-		printf("connected to the server..\n"); 
-        printf("Desea el modo automatico(a) o Manual(m)?");
-        char c = getchar();
-        if(c == 'a'){
-            printf("Elija el tiempo mínimo para el burst: ");
-            scanf("%d", &minBurst);
-            printf("\nElija el tiempo máximo para el burst: ");
-            scanf("%d", &maxBurst);
-            printf("\nElija el tiempo mínimo para la espera: ");
-            scanf("%d", &minWait);
-            printf("\nElija el tiempo máximo para la espera: ");
-            scanf("%d", &maxWait);
-            printf("%d",maxWait);   
-
+		   
+            if (c == 'a'){
             continuar =(int *) malloc(sizeof(int));
             *continuar = 1;
             pthread_t thread_id; 
