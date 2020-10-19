@@ -23,6 +23,7 @@ typedef struct node {
     int prioridad;
     time_t llegada;
     time_t salida;
+    int tiempo_ejecutado;
     struct node * next; 
 } node_t;
 
@@ -69,7 +70,7 @@ void agregarALista(int pid, int burst, int prioridad) {
         head->burst = burst;
         head->prioridad = prioridad;
         head->llegada = time(NULL);
-        
+        head->tiempo_ejecutado = 0;
     }else{
         node_t *temp = head;
         while(temp->next != NULL){
@@ -81,6 +82,7 @@ void agregarALista(int pid, int burst, int prioridad) {
         nuevo_nodo->burst = burst;
         nuevo_nodo->prioridad = prioridad;
         nuevo_nodo->llegada = time(NULL);
+        head->tiempo_ejecutado = 0;
         temp->next = nuevo_nodo;
     }
 } 
@@ -155,7 +157,7 @@ void imprimirTerminada(){
         cantProcesos++;
         int tat = (headend->salida - headend->llegada);
         totalTAT+=tat;
-        int wt = tat - headend->burst;
+        int wt = tat - headend->tiempo_ejecutado;
         totalWT += wt;
         printf("PID:%d TurnAround Time: %d Waiting Time: %d\n",headend->pid,tat,wt);
         fflush(stdout);
@@ -163,6 +165,66 @@ void imprimirTerminada(){
     }
     printf("Promedios:\nTurnAround Time: %f\nWaiting Time: %f\n",totalTAT/cantProcesos,totalWT/cantProcesos);
     fflush(stdout);
+}
+
+void *roundrobin(void *vargp){
+	float oscioso, tiempo = 0;
+    int ejecucion = 0;
+    time_t startOcioso, endOcioso;
+    startOcioso = time(NULL);
+    int quantum = *((int *) vargp);
+    while (continuar) { 
+        if(head!=NULL){
+        	printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", head->pid, head->burst, head->prioridad);
+            fflush(stdout);
+        	if(head->burst > quantum){
+        		endOcioso = time(NULL);
+            	tiempo = (float)(endOcioso - startOcioso);
+            	oscioso+=tiempo;
+            	sleep(quantum);
+            	printf("Proceso %d Ejecutado por %d segundos\n",head->pid, quantum);
+            	fflush(stdout);
+            	startOcioso = time(NULL);
+            	head->burst -= quantum;
+        		ejecucion += quantum;
+            	head->tiempo_ejecutado += quantum;
+            	while(bloquear_cola){}
+        		bloquear_cola = 1;
+        		node_t *temp = head;
+            	while(temp->next != NULL){
+                	temp=temp->next;
+            	}
+            	temp->next = head;
+            	head = head->next;
+            	temp->next->next = NULL;
+            	bloquear_cola = 0;
+        	}else{
+        		endOcioso = time(NULL);
+            	tiempo = (float)(endOcioso - startOcioso);
+            	oscioso+=tiempo;
+            	sleep(head->burst);
+            	printf("Proceso %d Ejecutado\n",head->pid);
+            	fflush(stdout);
+            	startOcioso = time(NULL);
+            	head->tiempo_ejecutado += head->burst;
+        		ejecucion += head->burst;
+            	head->salida = startOcioso;
+            	node_t *terminado = head;
+            	head = head->next;
+            	anadirAterminado(terminado);
+
+        	}
+        }
+        if(continuar == 0) {endOcioso = time(NULL);
+            tiempo = (float)(endOcioso - startOcioso);
+            oscioso+=tiempo;
+            break;
+        }
+    }
+    printf("Tiempo Ejecutando:%d  Tiempo Oscioso:%f\n",ejecucion, oscioso);
+    fflush(stdout);
+    imprimirTerminada();
+
 }
 
 void *hpf(){
@@ -174,7 +236,6 @@ void *hpf(){
         while(bloquear_cola){}
         bloquear_cola = 1;
         if(head!=NULL){
-            fflush(stdout);
             node_t *temp = head;
             node_t *eliminar = head;
             node_t *anterior_eliminar = NULL;
@@ -200,6 +261,7 @@ void *hpf(){
             fflush(stdout);
             startOcioso = time(NULL);
             eliminar->salida = startOcioso;
+            eliminar->tiempo_ejecutado = eliminar->burst; 
             node_t *terminado = eliminar;
             if(anterior_eliminar!=NULL){
                 anterior_eliminar->next = eliminar->next;
@@ -229,7 +291,6 @@ void *sjf(){
         while(bloquear_cola){}
         bloquear_cola = 1;
         if(head!=NULL){
-            fflush(stdout);
             node_t *temp = head;
             node_t *eliminar = head;
             node_t *anterior_eliminar = NULL;
@@ -255,6 +316,7 @@ void *sjf(){
             fflush(stdout);
             startOcioso = time(NULL);
             eliminar->salida = startOcioso;
+            eliminar->tiempo_ejecutado = eliminar->burst; 
             node_t *terminado = eliminar;
             if(anterior_eliminar!=NULL){
                 anterior_eliminar->next = eliminar->next;
@@ -293,6 +355,7 @@ void *fifo(){
             fflush(stdout);
             startOcioso = time(NULL);
             head->salida = startOcioso;
+            head->tiempo_ejecutado = head->burst;
             node_t *terminado = head;
             head = head->next;
             anadirAterminado(terminado);
@@ -318,6 +381,9 @@ int main()
     printf("Round Robin: 4\n");
     int algoritmo;
     scanf("%d", &algoritmo);
+    printf("Ingrese el quantum para el Round Robin: \n");
+    int *quantum = malloc(sizeof(int));
+    scanf("%d", quantum); 
     int sockfd, len; 
     struct sockaddr_in servaddr, cli; 
 
@@ -363,8 +429,9 @@ int main()
         printf("server acccept the client...\n"); 
         pthread_t thread_id, thread2_id; 
         pthread_create(&thread_id, NULL, receptorProcesos, NULL);
-        continuar = 1; 
-        pthread_create(&thread2_id, NULL, hpf, NULL);
+        continuar = 1;      
+        pthread_create(&thread2_id, NULL, roundrobin, (void *)quantum);
+
         char comprobar;
         while(comprobar = getchar()!='q'){
             if(comprobar == 'c'){

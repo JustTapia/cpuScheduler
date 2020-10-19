@@ -109,7 +109,6 @@ int main()
 { 
 	int connfd; 
 	struct sockaddr_in servaddr, cli; 
-    printf("connected to the server..\n"); 
         printf("Desea el modo automatico(a) o Manual(m)?");
         char c = getchar();
         if(c == 'a'){
@@ -144,7 +143,7 @@ int main()
 		exit(0); 
 	} 
 	else{
-		   
+            printf("connected to the server..\n"); 	   
             if (c == 'a'){
             continuar =(int *) malloc(sizeof(int));
             *continuar = 1;
