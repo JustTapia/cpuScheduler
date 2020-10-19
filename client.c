@@ -25,7 +25,7 @@ int minBurst = 1, maxBurst = 5, minWait = 3, maxWait = 8;
 
 void *enviar(void *vargp) 
 { 
-    //char buff[MAX]; 
+    char buff[MAX]; 
     char hello[sizeof(prueba)];
     
     sleep(2);
@@ -39,9 +39,10 @@ void *enviar(void *vargp)
     printf("Burst:%d\nPrioridad:%d\n", burst, prioridad);
     //send(sockfd , hello , sizeof(hello) , 0);
     
-    //bzero(buff, sizeof(buff)); 
-	//read(sockfd, buff, sizeof(buff)); 
-	//printf("From Server : %s", buff); 
+    bzero(buff, sizeof(buff)); 
+	read(sockfd, buff, sizeof(buff)); 
+	printf("From Server: %s\n", buff); 
+    fflush(stdout);
 
 
     //send(sock , hello , sizeof(hello) , 0);

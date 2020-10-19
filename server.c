@@ -82,7 +82,7 @@ void agregarALista(int pid, int burst, int prioridad) {
         nuevo_nodo->burst = burst;
         nuevo_nodo->prioridad = prioridad;
         nuevo_nodo->llegada = time(NULL);
-        head->tiempo_ejecutado = 0;
+        nuevo_nodo->tiempo_ejecutado = 0;
         temp->next = nuevo_nodo;
     }
 } 
@@ -90,15 +90,16 @@ void agregarALista(int pid, int burst, int prioridad) {
 // Function designed for chat between client and server. 
 void *receptorProcesos() 
 { 
-    char buff[MAX]; 
     int n; 
     int counter_pid = 1;
     prueba ptr = {2,3};
+    char *recibido = "Recibido Proceso: ";
+    char num_pid[5];
+    char message_server[30];
     char* buffer[sizeof(prueba)]; 
     char hello[sizeof(prueba)];
     // infinite loop for chat 
     for (;;) { 
-        bzero(buff, MAX); 
         memset(buffer, 0, sizeof(prueba));
         // read the message from client and copy it in buffer 
 
@@ -110,30 +111,16 @@ void *receptorProcesos()
             memcpy(&ptr, buffer, sizeof(prueba));
             printf("%d\n%d\n",ptr.burst,ptr.prioridad);
             fflush(stdout);
-
-           while(bloquear_cola){};
+            sprintf(num_pid, "%d", counter_pid);
+            strcpy(message_server, recibido);
+            strcat(message_server, num_pid);
+        	write(connfd, message_server, sizeof(message_server));
+            while(bloquear_cola){};
             bloquear_cola = 1;
             agregarALista(counter_pid, ptr.burst, ptr.prioridad);
             bloquear_cola = 0;
             counter_pid++;
         }
-        // print buffer which contains the client contents 
-        /*printf("To client : "); 
-        bzero(buff, MAX); 
-        n = 0; 
-        // copy server message in the buffer 
-        while ((buff[n++] = getchar()) != '\n') 
-            ; 
-
-        // and send that buffer to client 
-        write(sockfd, buff, sizeof(buff));
-        //send(sockfd, buff, sizeof(buff), 0); 
-
-        // if msg contains "Exit" then server exit and chat ended. 
-        if (strncmp("exit", buff, 4) == 0) { 
-            printf("Server Exit...\n"); 
-            break; 
-        } */
     }
 } 
 
@@ -175,7 +162,7 @@ void *roundrobin(void *vargp){
     int quantum = *((int *) vargp);
     while (continuar) { 
         if(head!=NULL){
-        	printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", head->pid, head->burst, head->prioridad);
+        	printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", head->pid, head->burst, head->prioridad);
             fflush(stdout);
         	if(head->burst > quantum){
         		endOcioso = time(NULL);
@@ -249,7 +236,7 @@ void *hpf(){
                 temp=temp->next;
             }
             bloquear_cola = 0;
-            printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
+            printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
             fflush(stdout);
             endOcioso = time(NULL);
             tiempo = (float)(endOcioso - startOcioso);
@@ -304,7 +291,7 @@ void *sjf(){
                 temp=temp->next;
             }
             bloquear_cola = 0;
-            printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
+            printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", eliminar->pid, eliminar->burst, eliminar->prioridad);
             fflush(stdout);
             endOcioso = time(NULL);
             tiempo = (float)(endOcioso - startOcioso);
@@ -344,7 +331,7 @@ void *fifo(){
     startOcioso = time(NULL);
     while (continuar) { 
         if(head!=NULL){
-            printf("Ejecutando PID:%d Burst:%d prioridad:%d\n", head->pid, head->burst, head->prioridad);
+            printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", head->pid, head->burst, head->prioridad);
             fflush(stdout);
             endOcioso = time(NULL);
             tiempo = (float)(endOcioso - startOcioso);
@@ -373,7 +360,8 @@ void *fifo(){
 
 // Driver function 
 int main() 
-{ 
+{
+	int *quantum; 
     printf("Seleccione el tipo de algoritmo:\n");
     printf("FIFO: 1\n");
     printf("SJF: 2\n");
@@ -381,9 +369,12 @@ int main()
     printf("Round Robin: 4\n");
     int algoritmo;
     scanf("%d", &algoritmo);
-    printf("Ingrese el quantum para el Round Robin: \n");
-    int *quantum = malloc(sizeof(int));
-    scanf("%d", quantum); 
+    if(algoritmo == 4){
+    	printf("Ingrese el quantum para el Round Robin: \n");
+    	quantum = malloc(sizeof(int));
+    	scanf("%d", quantum); 
+    }
+
     int sockfd, len; 
     struct sockaddr_in servaddr, cli; 
 
@@ -427,11 +418,24 @@ int main()
     } 
     else{
         printf("server acccept the client...\n"); 
-        pthread_t thread_id, thread2_id; 
-        pthread_create(&thread_id, NULL, receptorProcesos, NULL);
-        continuar = 1;      
-        pthread_create(&thread2_id, NULL, roundrobin, (void *)quantum);
+        pthread_t thread_id, thread2_id;
+        continuar = 1; 
+      	pthread_create(&thread_id, NULL, receptorProcesos, NULL); 
+        switch(algoritmo){
+        	case 1:
+        		pthread_create(&thread2_id, NULL, fifo, NULL);
+        		break;
+        	case 2:
+        		pthread_create(&thread2_id, NULL, sjf, NULL);
+        		break;
+        	case 3:
+        		pthread_create(&thread2_id, NULL, hpf, NULL);
+        		break;
+        	case 4:
+        		pthread_create(&thread2_id, NULL, roundrobin, (void *)quantum);
+        		break;
 
+        }
         char comprobar;
         while(comprobar = getchar()!='q'){
             if(comprobar == 'c'){
@@ -442,10 +446,7 @@ int main()
         continuar = 0; 
         pthread_join(thread2_id, NULL);
     }
-    // Function for chatting between client and server 
-    
 
-    // After chatting close the socket 
     close(sockfd); 
 } 
 
