@@ -35,21 +35,20 @@ int continuar;
 int bloquear_cola = 0;
 
 void *printList(){
-
+	while(bloquear_cola){}
+    bloquear_cola = 1;
     node_t *temp = head;
     while(temp!= NULL){
-        printf("%d\n", temp->pid);
-        printf("%d\n", temp->burst);
-        printf("%d\n", temp->prioridad);
+    	printf("PID:%d Burst: %d Prioridad: %d\n",temp->pid,temp->burst,temp->prioridad);
         printf("\n");
         fflush(stdout);
         temp = temp->next;
     }
+    bloquear_cola = 0;
 
 } 
 
 void printList2(){
-
     node_t *temp = headend;
     while(temp!= NULL){
         printf("%d\n", temp->pid);
@@ -109,8 +108,6 @@ void *receptorProcesos()
             break; 
         }else{
             memcpy(&ptr, buffer, sizeof(prueba));
-            printf("%d\n%d\n",ptr.burst,ptr.prioridad);
-            fflush(stdout);
             sprintf(num_pid, "%d", counter_pid);
             strcpy(message_server, recibido);
             strcat(message_server, num_pid);
@@ -139,10 +136,11 @@ void anadirAterminado(node_t *terminado){
 
 void imprimirTerminada(){
     int cantProcesos = 0;
-    float totalTAT, totalWT;
+    float totalTAT = 0.0;
+    float totalWT = 0.0;
     while(headend != NULL){
         cantProcesos++;
-        int tat = (headend->salida - headend->llegada);
+        int tat = (headend->salida) - (headend->llegada);
         totalTAT+=tat;
         int wt = tat - headend->tiempo_ejecutado;
         totalWT += wt;
@@ -436,8 +434,9 @@ int main()
         		break;
 
         }
-        char comprobar;
-        while(comprobar = getchar()!='q'){
+        char comprobar = 'a';
+        while(comprobar != 'q'){
+        	comprobar = getchar();
             if(comprobar == 'c'){
                 pthread_t thread3_id; 
                 pthread_create(&thread3_id, NULL, printList, NULL);
