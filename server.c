@@ -338,9 +338,11 @@ void *fifo(){
     startOcioso = time(NULL);
     while (continuar) { 
         if(head!=NULL){
-
+            while (bloquear_cola){};
+            bloquear_cola = 1;
             node_t *terminado = head;
             head = head->next;
+            bloquear_cola = 0;
             printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", terminado->pid, terminado->burst, terminado->prioridad);
             fflush(stdout);
             endOcioso = time(NULL);
