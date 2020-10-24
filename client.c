@@ -121,7 +121,6 @@ int main()
             scanf("%d", &minWait);
             printf("\nElija el tiempo máximo para la espera: ");
             scanf("%d", &maxWait);
-            printf("%d",maxWait);
     }
 	// socket create and varification 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
