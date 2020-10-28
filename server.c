@@ -150,7 +150,7 @@ void *roundrobin(void *vargp){//algoritmo para la selección de round robin
         if(head!=NULL){
             while(bloquear_cola){};//Espera a su turno para accesar a la lista
             bloquear_cola = 1;
-            node_t *terminado = head//Quita el proceso de la lista de ready
+            node_t *terminado = head;//Quita el proceso de la lista de ready
             head = head->next;
             bloquear_cola = 0;
         	printf("Ejecutando PID:%d Burst:%d Prioridad:%d\n", terminado->pid, terminado->burst, terminado->prioridad);
